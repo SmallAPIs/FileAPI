@@ -1,0 +1,186 @@
+openapi: 3.1.0
+info:
+  title: FileAPI Local Agent
+  version: 1.0.0
+  description: HTTPS REST API for sandboxed file operations and desktop actions on localhost.
+servers:
+  - url: https://127.0.0.1:8443/api/v1
+    description: Default local agent
+paths:
+  /health:
+    get:
+      summary: Health check
+      servers:
+        - url: https://127.0.0.1:8443
+      responses:
+        '200':
+          description: Agent is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /files:
+    get:
+      summary: Read a text file
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/FileInfo'
+    post:
+      summary: Create a file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, content]
+              properties:
+                path:
+                  type: string
+                content:
+                  type: string
+                create_dirs:
+                  type: boolean
+      responses:
+        '200':
+          description: Created file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+    patch:
+      summary: Edit a file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, content]
+              properties:
+                path:
+                  type: string
+                content:
+                  type: string
+                mode:
+                  type: string
+                  enum: [overwrite, append]
+      responses:
+        '200':
+          description: Updated file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+    delete:
+      summary: Delete a file
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /system/open-app:
+    post:
+      summary: Open an application or file with the default handler
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Application name (macOS)
+                path:
+                  type: string
+                  description: Application or file path
+      responses:
+        '200':
+          description: Launch requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+  /system/open-url:
+    post:
+      summary: Open an http(s) URL in the default browser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: URL opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+components:
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+    ErrorEnvelope:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+    FileInfo:
+      type: object
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+        size:
+          type: integer
+        modified_at:
+          type: string
+          format: date-time

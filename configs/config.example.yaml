@@ -1,0 +1,14 @@
+host: 127.0.0.1
+port: 8443
+
+# Paths the agent may read/write/delete. Defaults to the user home directory.
+allowed_roots:
+  - /path/to/your/home
+
+# CORS origins allowed to call the agent from a browser. Use "*" for local dev.
+allowed_origins:
+  - "*"
+
+# Optional overrides for generated TLS material (auto-created on first run).
+# cert_file: /path/to/cert.pem
+# key_file: /path/to/key.pem
