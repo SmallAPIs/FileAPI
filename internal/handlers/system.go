@@ -32,7 +32,7 @@ type openURLRequest struct {
 func (h *SystemHandler) OpenApp(w http.ResponseWriter, r *http.Request) {
 	var req openAppRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "invalid_json", "request body must be valid JSON")
+		WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "request body must be valid JSON")
 		return
 	}
 
@@ -41,12 +41,12 @@ func (h *SystemHandler) OpenApp(w http.ResponseWriter, r *http.Request) {
 		target = strings.TrimSpace(req.Name)
 	}
 	if target == "" {
-		WriteError(w, http.StatusBadRequest, "missing_target", "either name or path is required")
+		WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "either name or path is required")
 		return
 	}
 
 	if err := h.desktop.OpenApp(target); err != nil {
-		WriteError(w, http.StatusInternalServerError, "open_app_failed", err.Error())
+		WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
@@ -57,30 +57,30 @@ func (h *SystemHandler) OpenApp(w http.ResponseWriter, r *http.Request) {
 func (h *SystemHandler) OpenURL(w http.ResponseWriter, r *http.Request) {
 	var req openURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "invalid_json", "request body must be valid JSON")
+		WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "request body must be valid JSON")
 		return
 	}
 
 	rawURL := strings.TrimSpace(req.URL)
 	if rawURL == "" {
-		WriteError(w, http.StatusBadRequest, "missing_url", "url is required")
+		WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "url is required")
 		return
 	}
 
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		WriteError(w, http.StatusBadRequest, "invalid_url", "url must be a valid absolute URL")
+		WriteError(w, http.StatusBadRequest, "INVALID_URL", "url must be a valid absolute URL")
 		return
 	}
 
 	scheme := strings.ToLower(parsed.Scheme)
 	if scheme != "http" && scheme != "https" {
-		WriteError(w, http.StatusBadRequest, "invalid_scheme", "only http and https URLs are allowed")
+		WriteError(w, http.StatusBadRequest, "INVALID_URL", "only http and https URLs are allowed")
 		return
 	}
 
 	if err := h.desktop.OpenURL(rawURL); err != nil {
-		WriteError(w, http.StatusInternalServerError, "open_url_failed", err.Error())
+		WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 

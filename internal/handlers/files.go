@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/SmallAPIs/FileAPI/internal/filesystem"
 )
@@ -45,7 +46,7 @@ func (h *FilesHandler) Read(w http.ResponseWriter, r *http.Request) {
 func (h *FilesHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req createFileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "invalid_json", "request body must be valid JSON")
+		WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "request body must be valid JSON")
 		return
 	}
 
@@ -54,14 +55,14 @@ func (h *FilesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeFileError(w, err)
 		return
 	}
-	WriteOK(w, info)
+	WriteCreated(w, info)
 }
 
 // Edit handles PATCH /files.
 func (h *FilesHandler) Edit(w http.ResponseWriter, r *http.Request) {
 	var req editFileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		WriteError(w, http.StatusBadRequest, "invalid_json", "request body must be valid JSON")
+		WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "request body must be valid JSON")
 		return
 	}
 
@@ -85,17 +86,19 @@ func (h *FilesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func writeFileError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, filesystem.ErrPathNotAllowed):
-		WriteError(w, http.StatusForbidden, "path_not_allowed", err.Error())
-	case errors.Is(err, filesystem.ErrPathTraversal):
-		WriteError(w, http.StatusBadRequest, "path_traversal", err.Error())
+	case errors.Is(err, filesystem.ErrPathNotAllowed), errors.Is(err, filesystem.ErrPathTraversal):
+		WriteError(w, http.StatusForbidden, "FORBIDDEN", err.Error())
 	case errors.Is(err, filesystem.ErrNotFound):
-		WriteError(w, http.StatusNotFound, "not_found", err.Error())
+		WriteError(w, http.StatusNotFound, "NOT_FOUND", err.Error())
 	case errors.Is(err, filesystem.ErrBinaryContent):
-		WriteError(w, http.StatusUnsupportedMediaType, "binary_content", err.Error())
+		WriteError(w, http.StatusUnsupportedMediaType, "BINARY_NOT_SUPPORTED", err.Error())
 	case errors.Is(err, filesystem.ErrTooLarge):
-		WriteError(w, http.StatusRequestEntityTooLarge, "file_too_large", err.Error())
+		WriteError(w, http.StatusRequestEntityTooLarge, "FILE_TOO_LARGE", err.Error())
 	default:
-		WriteError(w, http.StatusBadRequest, "file_error", err.Error())
+		if strings.Contains(err.Error(), "already exists") {
+			WriteError(w, http.StatusConflict, "ALREADY_EXISTS", err.Error())
+			return
+		}
+		WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
 	}
 }

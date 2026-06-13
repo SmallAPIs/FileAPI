@@ -111,7 +111,7 @@ func recovery(logger *slog.Logger) func(http.Handler) http.Handler {
 			defer func() {
 				if rec := recover(); rec != nil {
 					logger.Error("panic recovered", "error", fmt.Sprint(rec))
-					handlers.WriteError(w, http.StatusInternalServerError, "internal_error", "unexpected server error")
+					handlers.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "unexpected server error")
 				}
 			}()
 			next.ServeHTTP(w, r)

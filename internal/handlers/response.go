@@ -23,6 +23,11 @@ func WriteOK(w http.ResponseWriter, data interface{}) {
 	writeJSON(w, http.StatusOK, envelope{OK: true, Data: data})
 }
 
+// WriteCreated sends a 201 JSON envelope.
+func WriteCreated(w http.ResponseWriter, data interface{}) {
+	writeJSON(w, http.StatusCreated, envelope{OK: true, Data: data})
+}
+
 // WriteError sends a failed JSON envelope with the given HTTP status.
 func WriteError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, envelope{

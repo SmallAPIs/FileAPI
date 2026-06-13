@@ -1,0 +1,8 @@
+# Binaries
+/fileapi
+/fileapi.exe
+/dist/
+
+# OS
+.DS_Store
+Thumbs.db
