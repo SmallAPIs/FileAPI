@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
@@ -16,6 +17,8 @@ jobs:
           cache: true
       - run: go test ./...
       - run: go vet ./...
+      - name: Verify local build
+        run: go build -ldflags="-s -w" -o dist/fileapi ./cmd/fileapi
 
   build:
     runs-on: blacksmith-2vcpu-ubuntu-2404
@@ -43,8 +46,15 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build -ldflags="-s -w" -o dist/fileapi ./cmd/fileapi
+        run: |
+          mkdir -p dist
+          NAME="fileapi-${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ "$GOOS" = "windows" ]; then
+            NAME="${NAME}.exe"
+          fi
+          go build -ldflags="-s -w" -o "dist/${NAME}" ./cmd/fileapi
+          echo "ARTIFACT=dist/${NAME}" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
           name: fileapi-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/fileapi
+          path: ${{ env.ARTIFACT }}
