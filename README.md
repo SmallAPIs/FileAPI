@@ -91,21 +91,49 @@ make build   # build ./fileapi
 make dist    # cross-compile binaries into dist/
 ```
 
+Build outputs (local `make dist` or CI artifacts):
+
+| Artifact | Platform |
+|----------|----------|
+| `fileapi-linux-amd64` | Linux x64 |
+| `fileapi-linux-arm64` | Linux ARM64 |
+| `fileapi-windows-amd64.exe` | Windows x64 |
+| `fileapi-darwin-amd64` | macOS Intel |
+| `fileapi-darwin-arm64` | macOS Apple Silicon |
+
 ## CI (Blacksmith)
 
-CI runs on [Blacksmith](https://www.blacksmith.sh/) runners:
-
-- `go test ./...` and `go vet ./...`
-- Cross-compile matrix: linux/windows/darwin × amd64/arm64
-- Upload build artifacts per platform
-
-**Before the first CI run succeeds**, complete Blacksmith setup:
-
-1. Install the [Blacksmith GitHub App](https://app.blacksmith.sh) on the `SmallAPIs` organization (or the org that owns this repo).
-2. Blacksmith targets GitHub **organizations**; personal repos may need to live under an org.
-3. If your org uses IP allowlists, allowlist Blacksmith control-plane IPs per [their network docs](https://docs.blacksmith.sh/introduction/quickstart).
+CI runs on [Blacksmith](https://www.blacksmith.sh/) runners — not GitHub-hosted `ubuntu-latest`.
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+| Job | What it does |
+|-----|----------------|
+| `test` | `go test`, `go vet`, and a smoke `go build` |
+| `build` | Cross-compile 5 platform binaries and upload artifacts |
+
+### Blacksmith setup (skip the Migration Wizard)
+
+This repo **already uses Blacksmith** (`runs-on: blacksmith-2vcpu-ubuntu-2404`). The Migration Wizard only converts GitHub runners like `ubuntu-latest` → Blacksmith, so it will show **“No GitHub runners detected”** for `ci.yml`. That is correct — **close or skip the wizard**; no migration PR is needed.
+
+**One-time checklist:**
+
+1. Install the [Blacksmith GitHub App](https://app.blacksmith.sh) on the **SmallAPIs** org.
+2. In the app settings, grant access to the **FileAPI** repository (all repos that use `runs-on: blacksmith-*` must be included).
+3. If your org uses GitHub IP allowlists, allowlist Blacksmith control-plane IPs per [network docs](https://docs.blacksmith.sh/introduction/quickstart).
+
+**Trigger a build:**
+
+- Push to `main` or open a pull request, **or**
+- GitHub → **Actions** → **CI** → **Run workflow** (manual `workflow_dispatch`)
+
+**Verify it worked:**
+
+- GitHub Actions: jobs show runner `blacksmith-2vcpu-ubuntu-2404` (not `ubuntu-latest`).
+- Blacksmith console: [app.blacksmith.sh](https://app.blacksmith.sh) lists the workflow run.
+- After `build` completes, download artifacts from the Actions run page (one zip per platform).
+
+**If jobs stay on “Waiting for a runner”:** the Blacksmith app is not installed on this repo, or the org/repo is not linked in the app.
 
 ## Roadmap
 
