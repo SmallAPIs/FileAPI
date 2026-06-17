@@ -13,7 +13,7 @@ go run ./cmd/fileapi serve
 On first run the agent:
 
 1. Creates a config directory in the OS-appropriate location
-2. Generates a self-signed TLS certificate (4096-bit RSA)
+2. Generates a self-signed TLS certificate (ECDSA P-256)
 3. Listens on `https://127.0.0.1:8443`
 
 Default config locations:
@@ -87,8 +87,8 @@ Tighten `allowed_origins` before any non-local deployment.
 ```bash
 make test    # go test ./...
 make vet     # go vet ./...
-make build   # build ./fileapi
-make dist    # cross-compile binaries into dist/
+make build   # build ./fileapi (stripped, ~5 MB on Linux amd64)
+make dist    # cross-compile size-optimized binaries into dist/
 ```
 
 Build outputs (local `make dist` or CI artifacts):

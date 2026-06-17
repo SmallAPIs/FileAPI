@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -17,14 +15,14 @@ const (
 
 // Config holds runtime settings for the local FileAPI agent.
 type Config struct {
-	Host           string   `yaml:"host"`
-	Port           int      `yaml:"port"`
-	AllowedRoots   []string `yaml:"allowed_roots"`
-	AllowedOrigins []string `yaml:"allowed_origins"`
-	CertFile       string   `yaml:"cert_file"`
-	KeyFile        string   `yaml:"key_file"`
-	ConfigDir      string   `yaml:"-"`
-	ConfigPath     string   `yaml:"-"`
+	Host           string
+	Port           int
+	AllowedRoots   []string
+	AllowedOrigins []string
+	CertFile       string
+	KeyFile        string
+	ConfigDir      string
+	ConfigPath     string
 }
 
 // DefaultConfig returns settings suitable for local development.
@@ -89,12 +87,35 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("read config: %w", err)
 	}
 
-	if err := yaml.Unmarshal(data, cfg); err != nil {
+	parsed, err := parseConfigYAML(data)
+	if err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+	mergeConfig(cfg, parsed)
 
 	cfg.applyDefaults()
 	return cfg, nil
+}
+
+func mergeConfig(dst, src *Config) {
+	if src.Host != "" {
+		dst.Host = src.Host
+	}
+	if src.Port != 0 {
+		dst.Port = src.Port
+	}
+	if len(src.AllowedRoots) > 0 {
+		dst.AllowedRoots = src.AllowedRoots
+	}
+	if len(src.AllowedOrigins) > 0 {
+		dst.AllowedOrigins = src.AllowedOrigins
+	}
+	if src.CertFile != "" {
+		dst.CertFile = src.CertFile
+	}
+	if src.KeyFile != "" {
+		dst.KeyFile = src.KeyFile
+	}
 }
 
 func (c *Config) applyDefaults() {
@@ -128,7 +149,7 @@ func (c *Config) Save() error {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 
-	data, err := yaml.Marshal(c)
+	data, err := marshalConfigYAML(c)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
