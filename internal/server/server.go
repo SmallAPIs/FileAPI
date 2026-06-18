@@ -25,17 +25,18 @@ type Server struct {
 
 // New builds a configured HTTPS server.
 func New(cfg *config.Config, logger *slog.Logger) (*Server, error) {
-	fs, err := filesystem.NewService(cfg.AllowedRoots)
+	fs, err := filesystem.NewService(cfg.AllowedRoots, cfg.MaxReadSizeBytes, cfg.MaxWriteSizeBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	files := handlers.NewFilesHandler(fs)
+	files := handlers.NewFilesHandler(fs, cfg.MaxReadSizeBytes, cfg.MaxWriteSizeBytes)
 	system := handlers.NewSystemHandler(platform.New())
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("GET /api/v1/files", files.Read)
+	mux.HandleFunc("GET /api/v1/files/raw", files.ReadRaw)
 	mux.HandleFunc("POST /api/v1/files", files.Create)
 	mux.HandleFunc("PATCH /api/v1/files", files.Edit)
 	mux.HandleFunc("DELETE /api/v1/files", files.Delete)
@@ -53,10 +54,10 @@ func New(cfg *config.Config, logger *slog.Logger) (*Server, error) {
 	httpServer := &http.Server{
 		Addr:              cfg.ListenAddr(),
 		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout(),
+		ReadTimeout:       cfg.ReadTimeout(),
+		WriteTimeout:      cfg.WriteTimeout(),
+		IdleTimeout:       cfg.IdleTimeout(),
 		TLSConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		},

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -16,6 +17,12 @@ func TestDefaultConfig(t *testing.T) {
 	}
 	if len(cfg.AllowedRoots) != 1 {
 		t.Fatalf("expected one allowed root")
+	}
+	if cfg.MaxReadSizeBytes != defaultMaxReadSize {
+		t.Fatalf("unexpected max read size: %d", cfg.MaxReadSizeBytes)
+	}
+	if cfg.WriteTimeoutSeconds != int(defaultWriteTimeout/time.Second) {
+		t.Fatalf("unexpected write timeout: %d", cfg.WriteTimeoutSeconds)
 	}
 }
 

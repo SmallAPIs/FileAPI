@@ -13,7 +13,7 @@ go run ./cmd/fileapi serve
 On first run the agent:
 
 1. Creates a config directory in the OS-appropriate location
-2. Generates a self-signed TLS certificate (4096-bit RSA)
+2. Generates a self-signed TLS certificate (ECDSA P-256)
 3. Listens on `https://127.0.0.1:8443`
 
 Default config locations:
@@ -50,8 +50,9 @@ All responses use a JSON envelope:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/files?path=` | Read UTF-8 text file (max 10 MB) |
-| POST | `/api/v1/files` | Create file `{ "path", "content", "create_dirs"? }` |
-| PATCH | `/api/v1/files` | Edit file `{ "path", "content", "mode"?: "overwrite"\|"append" }` |
+| GET | `/api/v1/files/raw?path=` | Stream UTF-8 text file (no JSON; supports gzip) |
+| POST | `/api/v1/files` | Create file `{ "path", "content", "create_dirs"?, "include_content"? }` |
+| PATCH | `/api/v1/files` | Edit file `{ "path", "content", "mode"?: "overwrite"\|"append", "include_content"? }` |
 | DELETE | `/api/v1/files?path=` | Delete file |
 | POST | `/api/v1/system/open-app` | Open app `{ "name" \| "path" }` |
 | POST | `/api/v1/system/open-url` | Open URL `{ "url" }` (http/https only) |
