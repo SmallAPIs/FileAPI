@@ -88,8 +88,8 @@ Tighten `allowed_origins` before any non-local deployment.
 ```bash
 make test    # go test ./...
 make vet     # go vet ./...
-make build   # build ./fileapi
-make dist    # cross-compile binaries into dist/
+make build   # build ./fileapi (stripped, ~5 MB on Linux amd64)
+make dist    # cross-compile size-optimized binaries into dist/
 ```
 
 Build outputs (local `make dist` or CI artifacts):
