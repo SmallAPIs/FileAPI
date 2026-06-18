@@ -19,6 +19,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessEnvelope'
+  /files/raw:
+    get:
+      summary: Stream a text file without JSON overhead
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Raw UTF-8 file content
+          headers:
+            X-File-Path:
+              schema:
+                type: string
+            X-File-Size:
+              schema:
+                type: integer
+          content:
+            text/plain:
+              schema:
+                type: string
   /files:
     get:
       summary: Read a text file
@@ -56,6 +79,9 @@ paths:
                   type: string
                 create_dirs:
                   type: boolean
+                include_content:
+                  type: boolean
+                  description: When false, response omits file content (default true)
       responses:
         '200':
           description: Created file
@@ -80,6 +106,9 @@ paths:
                 mode:
                   type: string
                   enum: [overwrite, append]
+                include_content:
+                  type: boolean
+                  description: When false, response omits file content (default true)
       responses:
         '200':
           description: Updated file
@@ -179,6 +208,7 @@ components:
           type: string
         content:
           type: string
+          description: Omitted when include_content is false on create/edit
         size:
           type: integer
         modified_at:

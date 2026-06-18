@@ -2,8 +2,9 @@
 package tls
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -15,10 +16,7 @@ import (
 	"time"
 )
 
-const (
-	certBits = 4096
-	certDays = 3650
-)
+const certDays = 3650
 
 // Ensure generates a self-signed certificate and key if they do not exist.
 func Ensure(certFile, keyFile string) error {
@@ -30,7 +28,7 @@ func Ensure(certFile, keyFile string) error {
 		return nil
 	}
 
-	key, err := rsa.GenerateKey(rand.Reader, certBits)
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return fmt.Errorf("generate key: %w", err)
 	}

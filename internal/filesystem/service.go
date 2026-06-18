@@ -9,10 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
-
-const maxReadSize = 10 * 1024 * 1024 // 10 MB
 
 var (
 	ErrPathNotAllowed = errors.New("path is outside allowed roots")
@@ -20,25 +17,34 @@ var (
 	ErrNotFound       = errors.New("file not found")
 	ErrBinaryContent  = errors.New("file appears to be binary or is not valid UTF-8")
 	ErrTooLarge       = errors.New("file exceeds maximum read size")
+	ErrContentTooLarge = errors.New("content exceeds maximum write size")
 )
 
 // FileInfo describes a file returned by read operations.
 type FileInfo struct {
 	Path       string    `json:"path"`
-	Content    string    `json:"content"`
+	Content    string    `json:"content,omitempty"`
 	Size       int64     `json:"size"`
 	ModifiedAt time.Time `json:"modified_at"`
 }
 
 // Service performs path-validated filesystem operations.
 type Service struct {
-	allowedRoots []string
+	allowedRoots  []string
+	maxReadSize   int64
+	maxWriteSize  int64
 }
 
 // NewService creates a filesystem service constrained to allowedRoots.
-func NewService(allowedRoots []string) (*Service, error) {
+func NewService(allowedRoots []string, maxReadSize, maxWriteSize int64) (*Service, error) {
 	if len(allowedRoots) == 0 {
 		return nil, errors.New("at least one allowed root is required")
+	}
+	if maxReadSize <= 0 {
+		maxReadSize = 10 * 1024 * 1024
+	}
+	if maxWriteSize <= 0 {
+		maxWriteSize = maxReadSize
 	}
 
 	resolved := make([]string, 0, len(allowedRoots))
@@ -50,36 +56,26 @@ func NewService(allowedRoots []string) (*Service, error) {
 		resolved = append(resolved, filepath.Clean(abs))
 	}
 
-	return &Service{allowedRoots: resolved}, nil
+	return &Service{
+		allowedRoots: resolved,
+		maxReadSize:  maxReadSize,
+		maxWriteSize: maxWriteSize,
+	}, nil
 }
 
 // Read returns UTF-8 text content for a sandboxed path.
 func (s *Service) Read(path string) (*FileInfo, error) {
-	abs, err := s.resolve(path)
+	abs, info, err := s.resolveFile(path)
 	if err != nil {
 		return nil, err
 	}
-
-	info, err := os.Stat(abs)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-	if info.IsDir() {
-		return nil, fmt.Errorf("path is a directory")
-	}
-	if info.Size() > maxReadSize {
+	if info.Size() > s.maxReadSize {
 		return nil, ErrTooLarge
 	}
 
-	data, err := os.ReadFile(abs)
+	data, err := readValidatedUTF8(abs, s.maxReadSize)
 	if err != nil {
 		return nil, err
-	}
-	if !utf8.Valid(data) {
-		return nil, ErrBinaryContent
 	}
 
 	return &FileInfo{
@@ -90,8 +86,47 @@ func (s *Service) Read(path string) (*FileInfo, error) {
 	}, nil
 }
 
+// Stat returns file metadata without reading content.
+func (s *Service) Stat(path string) (*FileInfo, error) {
+	abs, info, err := s.resolveFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FileInfo{
+		Path:       abs,
+		Size:       info.Size(),
+		ModifiedAt: info.ModTime(),
+	}, nil
+}
+
+// StreamRaw validates UTF-8 and streams file content to w.
+func (s *Service) StreamRaw(path string, w io.Writer) (*FileInfo, error) {
+	abs, info, err := s.resolveFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.Size() > s.maxReadSize {
+		return nil, ErrTooLarge
+	}
+
+	if err := streamValidatedUTF8(abs, s.maxReadSize, w); err != nil {
+		return nil, err
+	}
+
+	return &FileInfo{
+		Path:       abs,
+		Size:       info.Size(),
+		ModifiedAt: info.ModTime(),
+	}, nil
+}
+
 // Create writes a new file at path, optionally creating parent directories.
-func (s *Service) Create(path, content string, createDirs bool) (*FileInfo, error) {
+func (s *Service) Create(path, content string, createDirs, includeContent bool) (*FileInfo, error) {
+	if int64(len(content)) > s.maxWriteSize {
+		return nil, ErrContentTooLarge
+	}
+
 	abs, err := s.resolve(path)
 	if err != nil {
 		return nil, err
@@ -113,11 +148,18 @@ func (s *Service) Create(path, content string, createDirs bool) (*FileInfo, erro
 		return nil, err
 	}
 
-	return s.Read(abs)
+	if includeContent {
+		return s.Read(abs)
+	}
+	return s.Stat(abs)
 }
 
 // Edit updates file content by overwrite or append.
-func (s *Service) Edit(path, content, mode string) (*FileInfo, error) {
+func (s *Service) Edit(path, content, mode string, includeContent bool) (*FileInfo, error) {
+	if int64(len(content)) > s.maxWriteSize {
+		return nil, ErrContentTooLarge
+	}
+
 	abs, err := s.resolve(path)
 	if err != nil {
 		return nil, err
@@ -148,7 +190,10 @@ func (s *Service) Edit(path, content, mode string) (*FileInfo, error) {
 		return nil, fmt.Errorf("unsupported edit mode %q", mode)
 	}
 
-	return s.Read(abs)
+	if includeContent {
+		return s.Read(abs)
+	}
+	return s.Stat(abs)
 }
 
 // Delete removes a file at path.
@@ -170,6 +215,26 @@ func (s *Service) Delete(path string) error {
 	}
 
 	return os.Remove(abs)
+}
+
+func (s *Service) resolveFile(path string) (string, os.FileInfo, error) {
+	abs, err := s.resolve(path)
+	if err != nil {
+		return "", nil, err
+	}
+
+	info, err := os.Stat(abs)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil, ErrNotFound
+		}
+		return "", nil, err
+	}
+	if info.IsDir() {
+		return "", nil, fmt.Errorf("path is a directory")
+	}
+
+	return abs, info, nil
 }
 
 func (s *Service) resolve(path string) (string, error) {
