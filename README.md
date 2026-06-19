@@ -6,13 +6,15 @@ FileAPI is a small local desktop agent written in Go. A browser-based CoWork web
 
 ### Install (recommended)
 
-**Windows (PowerShell):**
+The one-line install URLs require a **public** GitHub repository. If you see `404: Not Found`, use the [private repository install](#private-repository) steps below.
+
+**Windows (PowerShell) — public repo:**
 
 ```powershell
 irm https://raw.githubusercontent.com/SmallAPIs/FileAPI/main/scripts/install.ps1 | iex
 ```
 
-**Linux / macOS:**
+**Linux / macOS — public repo:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SmallAPIs/FileAPI/main/scripts/install.sh | sh
@@ -27,7 +29,39 @@ fileapi status   # check whether it is running
 fileapi version  # print the installed version
 ```
 
-Pin a specific release with `FILEAPI_VERSION=v1.0.0` (shell) or `$env:FILEAPI_VERSION="v1.0.0"` (PowerShell).
+Pin a specific release with `FILEAPI_VERSION=v1.0.1` (shell) or `$env:FILEAPI_VERSION="v1.0.1"` (PowerShell).
+
+### Private repository
+
+If the repo is private, anonymous `irm` / `curl` requests to `raw.githubusercontent.com` return **404**.
+
+**Option A — make the repo public (recommended for distribution):**
+
+GitHub → **Settings** → **Danger zone** → **Change repository visibility** → **Public**.
+
+**Option B — install with GitHub CLI (Windows):**
+
+```powershell
+gh auth login
+gh api repos/SmallAPIs/FileAPI/contents/scripts/install.ps1?ref=main -H "Accept: application/vnd.github.raw" | Invoke-Expression
+```
+
+**Option C — install with a personal access token (Windows):**
+
+```powershell
+$env:FILEAPI_GITHUB_TOKEN = "ghp_YOUR_TOKEN"
+$install = Invoke-RestMethod `
+  -Uri "https://api.github.com/repos/SmallAPIs/FileAPI/contents/scripts/install.ps1?ref=main" `
+  -Headers @{ Authorization = "Bearer $env:FILEAPI_GITHUB_TOKEN"; Accept = "application/vnd.github+json" }
+[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($install.content -replace "`n", ""))) | Invoke-Expression
+```
+
+**Option D — manual download:**
+
+1. Open [Releases](https://github.com/SmallAPIs/FileAPI/releases) while signed in to GitHub
+2. Download `fileapi-windows-amd64.exe` from the latest release
+3. Move it to `%LOCALAPPDATA%\Programs\FileAPI\fileapi.exe`
+4. Add `%LOCALAPPDATA%\Programs\FileAPI` to your user `PATH`
 
 ### Run from source
 
