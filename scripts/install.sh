@@ -43,6 +43,59 @@ else
   DOWNLOAD_URL="${DOWNLOAD_BASE}/latest/download/${ARTIFACT}"
 fi
 
+GITHUB_TOKEN="${FILEAPI_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
+CURL_AUTH=()
+if [ -n "$GITHUB_TOKEN" ]; then
+  CURL_AUTH=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+fi
+
+download_release_asset() {
+  dest="$1"
+  if curl --fail --show-error --location --progress-bar \
+    "${CURL_AUTH[@]}" -o "$dest" "$DOWNLOAD_URL" 2>/dev/null; then
+    return 0
+  fi
+
+  if [ -z "$GITHUB_TOKEN" ]; then
+    error "Download failed. ${GITHUB_REPO} appears to be private.
+
+Use one of these options:
+  1. Make the repository public in GitHub Settings
+  2. Install with GitHub CLI:
+       gh api repos/${GITHUB_REPO}/contents/scripts/install.sh?ref=main -H \"Accept: application/vnd.github.raw\" | sh
+  3. Export a token with repo read access:
+       export FILEAPI_GITHUB_TOKEN=ghp_...
+       curl -fsSL .../install.sh | sh"
+  fi
+
+  if [ -n "$VERSION" ]; then
+    release_url="https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${VERSION}"
+  else
+    release_url="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
+  fi
+
+  release_json=$(curl -fsSL "${CURL_AUTH[@]}" \
+    -H "Accept: application/vnd.github+json" \
+    "$release_url")
+
+  if available python3; then
+    asset_id=$(printf '%s' "$release_json" | python3 -c "import json,sys; data=json.load(sys.stdin); print(next(a['id'] for a in data['assets'] if a['name']=='${ARTIFACT}'))")
+  elif available jq; then
+    asset_id=$(printf '%s' "$release_json" | jq -r --arg name "$ARTIFACT" '.assets[] | select(.name == $name) | .id')
+  else
+    error "Private repo install requires python3 or jq to locate the release asset."
+  fi
+
+  if [ -z "$asset_id" ] || [ "$asset_id" = "null" ]; then
+    error "Could not find release asset ${ARTIFACT} for ${GITHUB_REPO}."
+  fi
+
+  curl --fail --show-error --location --progress-bar \
+    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+    -H "Accept: application/octet-stream" \
+    -o "$dest" "https://api.github.com/repos/${GITHUB_REPO}/releases/assets/${asset_id}"
+}
+
 if [ -n "${FILEAPI_INSTALL_DIR:-}" ]; then
   INSTALL_DIR="$FILEAPI_INSTALL_DIR"
   BINDIR="$INSTALL_DIR"
@@ -114,8 +167,7 @@ if [ ! -w "$BINDIR" ] 2>/dev/null; then
 fi
 
 status "Downloading FileAPI for ${PLATFORM}/${ARCH}..."
-curl --fail --show-error --location --progress-bar \
-  -o "$TEMP_DIR/fileapi" "$DOWNLOAD_URL"
+download_release_asset "$TEMP_DIR/fileapi"
 chmod +x "$TEMP_DIR/fileapi"
 
 status "Installing FileAPI to ${TARGET}..."
