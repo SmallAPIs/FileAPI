@@ -14,6 +14,9 @@ import (
 	filetls "github.com/SmallAPIs/FileAPI/internal/tls"
 )
 
+// version is set at link time by release builds (-ldflags "-X main.version=...").
+var version = "dev"
+
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
@@ -28,6 +31,9 @@ func run(args []string) int {
 	switch args[0] {
 	case "serve":
 		return serveCommand(args[1:], logger)
+	case "version", "-v", "--version":
+		fmt.Println(version)
+		return 0
 	case "-h", "--help", "help":
 		printUsage()
 		return 0
@@ -113,6 +119,7 @@ Usage:
   fileapi serve [--config path]
 
 Commands:
-  serve   Start the HTTPS API server (default)
-  help    Show this help text`)
+  serve     Start the HTTPS API server (default)
+  version   Print the release version
+  help      Show this help text`)
 }

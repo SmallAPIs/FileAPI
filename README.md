@@ -136,6 +136,27 @@ This repo **already uses Blacksmith** (`runs-on: blacksmith-2vcpu-ubuntu-2404`).
 
 **If jobs stay on “Waiting for a runner”:** the Blacksmith app is not installed on this repo, or the org/repo is not linked in the app.
 
+### Production release
+
+Workflow: [`.github/workflows/release.yml`](.github/workflows/release.yml)
+
+Production binaries are built on Blacksmith runners when you push a version tag (`v*`) or manually run the **Release** workflow from the Actions tab (select an existing tag).
+
+| Job | What it does |
+|-----|----------------|
+| `test` | `go test` and `go vet` quality gates |
+| `build` | Cross-compile 5 platform binaries with release ldflags |
+| `release` | Publish a GitHub Release with binaries and `SHA256SUMS` |
+
+**Cut a release:**
+
+```bash
+git tag -a v1.0.0 -m "FileAPI v1.0.0"
+git push origin v1.0.0
+```
+
+After the workflow completes, download artifacts from the [GitHub Releases](https://github.com/SmallAPIs/FileAPI/releases) page. Verify a binary with `fileapi version`.
+
 ## Roadmap
 
 - OAuth/JWT authentication
