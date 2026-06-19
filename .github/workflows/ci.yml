@@ -18,7 +18,7 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - name: Verify local build
-        run: go build -ldflags="-s -w" -o dist/fileapi ./cmd/fileapi
+        run: CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o dist/fileapi ./cmd/fileapi
 
   build:
     runs-on: blacksmith-2vcpu-ubuntu-2404
@@ -52,7 +52,7 @@ jobs:
           if [ "$GOOS" = "windows" ]; then
             NAME="${NAME}.exe"
           fi
-          go build -ldflags="-s -w" -o "dist/${NAME}" ./cmd/fileapi
+          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "dist/${NAME}" ./cmd/fileapi
           echo "ARTIFACT=dist/${NAME}" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
