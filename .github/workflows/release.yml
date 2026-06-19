@@ -68,11 +68,16 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404
     needs: build
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: fileapi-*
           merge-multiple: true
           path: dist
+      - name: Package install scripts
+        run: |
+          cp scripts/install.sh scripts/install.ps1 dist/
+          chmod +x dist/install.sh
       - name: Generate checksums
         run: |
           cd dist

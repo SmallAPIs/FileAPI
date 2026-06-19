@@ -4,6 +4,33 @@ FileAPI is a small local desktop agent written in Go. A browser-based CoWork web
 
 ## Quick start
 
+### Install (recommended)
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/SmallAPIs/FileAPI/main/scripts/install.ps1 | iex
+```
+
+**Linux / macOS:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SmallAPIs/FileAPI/main/scripts/install.sh | sh
+```
+
+This downloads the latest release binary, installs it, and adds `fileapi` to your PATH.
+Then manage the agent from your terminal:
+
+```bash
+fileapi serve    # start the HTTPS API server
+fileapi status   # check whether it is running
+fileapi version  # print the installed version
+```
+
+Pin a specific release with `FILEAPI_VERSION=v1.0.0` (shell) or `$env:FILEAPI_VERSION="v1.0.0"` (PowerShell).
+
+### Run from source
+
 Requirements: Go 1.22+
 
 ```bash
